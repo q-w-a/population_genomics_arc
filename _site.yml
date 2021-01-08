@@ -8,7 +8,7 @@ navbar:
     - text: "H. Papilio, 32 Sequence Reference, Dendrogram & PCA"
       href: papilio_32.html
     - text: "H. Papilio, 32 Sequence Reference, DAPC"
-      href: Read_Depth_Tutorial.html
+      href: papilio_32_dapc.html
 
 output:
   html_document:
