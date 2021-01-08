@@ -1,0 +1,114 @@
+---
+title: "H. Papilio DAPC, 32 Sequence Reference"
+date: "1/7/2021"
+output: 
+  html_document:
+    code_folding: 'hide'
+    theme: 'cerulean'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, echo = TRUE)
+library(vcfR)
+library(tidyverse)
+library(poppr)
+library(reshape2)
+
+#load vcf file as a vcfR object
+pap_76_vcfR <- read.vcfR("./Am_tu_Hp17_32seqs.fasta_bbmap_output_1_6_all_filtered.vcf")
+
+#load population information file
+master_pop <- read_tsv("./master_pop2.tsv")
+
+```
+
+We will be working with a genlight object for this analysis, so we convert the vcfR object to a genlight and add the population information. 
+
+```{r, echo = FALSE, results = 'hide', warning = FALSE}
+
+#convert vcfR object to genlight object
+pap_76_genlight <- vcfR2genlight(pap_76_vcfR)
+
+#get vector of individual names
+all_ind <- pap_76_genlight %>% 
+  indNames () %>% 
+  substr(1,6) %>% 
+  factor(ordered=TRUE)
+
+#filter population information for only those individuals
+all_pop_new <- master_pop %>% 
+  filter(lkh_number %in% all_ind)
+
+#reorder population information to match order of individuals in genlight object
+all_pop_new$lkh_number <- factor(all_pop_new$lkh_number, levels = all_ind, ordered=TRUE)
+all_reordered <-  all_pop_new[order(all_pop_new$lkh_number),]
+
+#change ANP to Acadia National Park for consistency
+all_reordered <- all_reordered %>%
+  mutate(location_new = ifelse(location_of_sample == "ANP", "Acadia National Park", location_of_sample))
+
+#pull location vector                                  
+location <- all_reordered %>% 
+  pull(location_new) %>% 
+  factor(order=TRUE)
+
+#set population to location
+pop(pap_76_genlight) <- location
+
+#set ploidy to 1 (haploid)
+ploidy(pap_76_genlight) <- 1
+
+#simplify names
+indNames(pap_76_genlight) <- substr(pap_76_genlight$ind.names,1,6)
+
+
+
+```
+
+Discriminant analysis of principal components is a multivariate approach that divides variance into within-group variance and between-group variance to discriminate between groups. This enables the identification of genetic clusters, and the clusters identified by the model can be compared by those expected from geographic information. This provides a quality alternative for clustering without making assumptions about the randomness of mating, which may be unknown in microbial species, as is the case with *H. papilio*. 
+
+
+To perform DAPC analysis, the first step is to determine the optimal number of clusters. Once we do so, we can compare the detected clusters with the geography of the samples. 
+
+```{r}
+### DAPC analysis
+
+#find optimum number of clusters
+#run this line of code without the n.pca and n.clust arguments, and use the plot to identify the best values for these arguments
+#for number of clusters, look for local minimum 
+#for number of PCAs, look at point at which additional PCAs do not explain a significant amount of variance
+clust <- find.clusters(pap_76_genlight, max.n.clust = 15, n.pca = 40, n.clust = 7)
+
+#compare to the actual populations
+table(pop(pap_76_genlight), clust$grp )
+
+
+```
+
+With the cluster information, we can perform the DAPC analysis with the dapc() function. 
+
+This allows us to create a memborship probability plot, where we compare the populations assigned by the clustering analysis done by DAPC with the geographical information about the samples. Here, we can see a high degree of heterogeneity in each location, indicating low genetic differentiation between populations from these locations. 
+
+```{r, fig.height = 4, fig.width = 11}
+#dapc analysis
+dapc1 <- dapc(pap_76_genlight, pop = clust$grp, n.pca = 40, n.da = 1)
+
+#reshaping the data for plotting
+dapc.results <- as.data.frame(dapc1$posterior)
+dapc.results$pop <- pop(pap_76_genlight)
+dapc.results$indNames <- rownames(dapc.results)
+dapc.results <- melt(dapc.results)
+colnames(dapc.results) <-c("Original_Pop","Sample","Assigned_Pop","Posterior_membership_probability")
+
+#memborship probability plot
+memb_prob_plot <- 
+  ggplot(dapc.results, aes(x=Sample, y=Posterior_membership_probability, fill=Assigned_Pop)) + 
+  geom_bar(stat='identity') + 
+  facet_grid(~Original_Pop, scales = "free") + scale_fill_brewer(palette = "Accent") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 5), plot.title = element_text(face = "bold", hjust = .5)) + 
+  labs(title = "Memborship Probability for H. Papilio,\n32 Sequence Reference", fill = "Assigned Population", y = "Memborship Probability")
+memb_prob_plot
+
+```
+
