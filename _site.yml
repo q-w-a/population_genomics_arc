@@ -1,0 +1,15 @@
+name: "Population Genomics in Arcellinida"
+output_dir: "."
+navbar:
+  title: "Population Genomics in Arcellinida"
+  left:
+    - text: "Home"
+      href: index.html
+    - text: "H. Papilio, 32 Sequence Reference, Dendrogram & PCA"
+      href: papilio_32.html
+    - text: "H. Papilio, 32 Sequence Reference, DAPC"
+      href: Read_Depth_Tutorial.html
+
+output:
+  html_document:
+    theme: cerulean
