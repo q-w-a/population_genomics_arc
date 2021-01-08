@@ -11,7 +11,7 @@
 
 
 
-<title>Hyalopshenia papilio, 32 sequence reference</title>
+<title>H. papilio &amp; elegans, 32 sequence reference</title>
 
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -282,7 +282,7 @@ $(document).ready(function () {
   <a href="papilio_32.html">H. Papilio, 32 Sequence Reference, Dendrogram &amp; PCA</a>
 </li>
 <li>
-  <a href="Read_Depth_Tutorial.html">H. Papilio, 32 Sequence Reference, DAPC</a>
+  <a href="papilio_32_dapc.html">H. Papilio, 32 Sequence Reference, DAPC</a>
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
@@ -304,7 +304,7 @@ $(document).ready(function () {
 
 
 
-<h1 class="title toc-ignore">Hyalopshenia papilio, 32 sequence reference</h1>
+<h1 class="title toc-ignore">H. papilio &amp; elegans, 32 sequence reference</h1>
 <h4 class="date">1/7/2021</h4>
 
 </div>
@@ -313,7 +313,7 @@ $(document).ready(function () {
 <p><strong>Dendrogram &amp; PCA for <em>H. Papilio</em> Samples, 32 Sequence Reference </strong></p>
 <p>Parameters for vcf:</p>
 <p>-BBMap - MINID 0.76 -Varscan - p-value 0.05, min-avg-qual 20 -VCFtools - max-missing 0.8, mac 3, minDP 3, individuals with &gt; 70% missing data removed from analysis</p>
-<p>After loading the needed packages, vcf file, and population tsv file, we convert the vcfR object to a genlight object, and then add the needed population information.</p>
+<p>After loading the needed packages, vcf file, and population tsv file, we convert the vcfR object to a genlight object, and then add the needed population information. We will start here with a vcf file only containing information on variants from <em>H. papilio</em>.</p>
 <p>One way to visualize the population structure is with a simple phylogenetic tree. Here, the upgma tree building method is used, and the bitwise.dist function is used to efficiently calculate Euclidian distance from the genlight object.</p>
 <p>The ggtree package is an extension of ggplot2, following a similar grammar of graphics. This provides us with flexibility in shaping the aesthetic features of the tree plot. Here, geom_tiblab() was used to add the individual names as the tip labels, and the population as the tip color. geom_nodelab() was used to include the bootstrap values on the nodes.</p>
 <pre class="r"><code>#population information for tip labels
@@ -370,6 +370,145 @@ pca_plot &lt;- ggplot(all_pca_scores,
               
 pca_plot</code></pre>
 <p><img src="papilio_32_files/figure-html/unnamed-chunk-3-2.png" width="672" /></p>
+<p>We can perform the same analyses with the vcf file with variant information from <em>H. papilio</em> as well as <em>H. elegans</em>.</p>
+<pre class="r"><code>#load vcf file as a vcfR object
+pap_el_76_vcfR &lt;- read.vcfR(&quot;./Am_tu_Hp17_32seqs.fasta_bbmap_output_1_7_all_filtered.vcf&quot;)</code></pre>
+<pre><code>## Scanning file to determine attributes.
+## File attributes:
+##   meta lines: 23
+##   header_line: 24
+##   variant count: 973
+##   column count: 89
+## 
+Meta line 23 read in.
+## All meta lines processed.
+## gt matrix initialized.
+## Character matrix gt created.
+##   Character matrix gt rows: 973
+##   Character matrix gt cols: 89
+##   skip: 0
+##   nrows: 973
+##   row_num: 0
+## 
+Processed variant: 973
+## All variants processed</code></pre>
+<pre class="r"><code>#convert vcfR object to genlight object
+pap_el_76_genlight &lt;- vcfR2genlight(pap_el_76_vcfR)
+
+#get vector of individual names
+all_ind &lt;- pap_el_76_genlight %&gt;% 
+  indNames () %&gt;% 
+  substr(1,6) %&gt;% 
+  factor(ordered=TRUE)
+
+#filter population information for only those individuals, using same popoulation information file as used before (already loaded)
+all_pop_new &lt;- master_pop %&gt;% 
+  filter(lkh_number %in% all_ind)
+
+#reorder population information to match order of individuals in genlight object
+all_pop_new$lkh_number &lt;- factor(all_pop_new$lkh_number, levels = all_ind, ordered=TRUE)
+all_reordered &lt;-  all_pop_new[order(all_pop_new$lkh_number),]
+
+#change ANP to Acadia National Park for consistency
+all_reordered &lt;- all_reordered %&gt;%
+  mutate(location_new = ifelse(location_of_sample == &quot;ANP&quot;, 
+                               &quot;Acadia National Park&quot;, 
+                               location_of_sample))
+
+#pull location vector                                  
+location &lt;- all_reordered %&gt;% 
+  pull(location_new) %&gt;% 
+  factor(order=TRUE)
+
+species &lt;- all_reordered %&gt;% 
+  mutate(&quot;species&quot; = case_when(
+  str_detect(organism.x, &quot;elegans&quot;) ~ &quot;Hyalosphenia elegans&quot;,
+  str_detect(organism.x, &quot;papilio&quot;) ~ &quot;Hyalosphenia papilio&quot;,
+  TRUE ~ organism.x)) %&gt;% select(lkh_number, species)
+
+#set population to location
+pop(pap_el_76_genlight) &lt;- location
+
+addStrata(pap_el_76_genlight) &lt;- species
+
+#set ploidy to 1 (haploid)
+ploidy(pap_el_76_genlight) &lt;- 1
+
+#simplify names
+indNames(pap_el_76_genlight) &lt;- substr(pap_el_76_genlight$ind.names,1,6)
+
+rownames(species) &lt;- species$lkh_number
+species &lt;- species %&gt;% select(species)</code></pre>
+<p>Creating the tree.</p>
+<pre class="r"><code>strata(pap_el_76_genlight) &lt;- species
+#population information for tip labels
+col_pop &lt;- tibble(&quot;tip.label&quot; = pap_el_76_genlight$ind.names, &quot;population&quot; = pap_el_76_genlight$pop, &quot;species&quot; = pap_el_76_genlight$strata)
+
+         
+#tree generated with 100 bootstrap replicates
+all_tree &lt;- aboot(pap_el_76_genlight, distance = bitwise.dist, sample = 1000)</code></pre>
+<pre><code>## 
+Running bootstraps:       100 / 1000
+Running bootstraps:       200 / 1000
+Running bootstraps:       300 / 1000
+Running bootstraps:       400 / 1000
+Running bootstraps:       500 / 1000
+Running bootstraps:       600 / 1000
+Running bootstraps:       700 / 1000
+Running bootstraps:       800 / 1000
+Running bootstraps:       900 / 1000
+Running bootstraps:       1000 / 1000
+## Calculating bootstrap values... done.</code></pre>
+<p><img src="papilio_32_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<pre class="r"><code>#convert phylo object to ggtree object and add column information
+tree &lt;- ggtree(all_tree) %&lt;+% col_pop
+
+#plot the tree
+tree + 
+  geom_tiplab(aes(fill = (population)), 
+              geom = &quot;label&quot;, 
+              label.padding = unit(0.15, &quot;lines&quot;),  
+              label.size = 0, 
+              size = 1.3) +
+  scale_fill_brewer(palette = &quot;Set2&quot;) + 
+  labs(title = &quot;H. Papilio &amp; H. Elegans, 32 Sequence Reference&quot;, 
+       fill = &quot;Population&quot;) +
+  geom_nodelab(size = 2, nudge_x = -.009, nudge_y = .05) + geom_tippoint(aes(color = species$species)) + scale_color_manual(values = c(&quot;red&quot;, &quot;blue&quot;)) + labs(color = &quot;Species&quot;) +
+  theme(plot.title = element_text(hjust = .5, face = &quot;bold&quot;, size = 12), 
+        legend.title = element_text(face = &quot;bold&quot;, size = 14), 
+        legend.text = element_text(size = 15))</code></pre>
+<p><img src="papilio_32_files/figure-html/unnamed-chunk-5-2.png" width="672" /></p>
+<p>We can also create a PCA plot that shows species and population information.</p>
+<p>We observe the same pattern here of two <em>H. elegans</em> individuals being genetically distinct from the rest, and tighter clustering in <em>H. papilio</em> overall. It will be important to test the effect of the reference on this observation.</p>
+<pre class="r"><code>#pca computation, choose number of factors to explain sufficient variance
+pap_el_pca &lt;- glPca(pap_el_76_genlight, nf=3)
+barplot(100*pap_el_pca$eig/sum(pap_el_pca$eig), col = heat.colors(50), main=&quot;PCA Eigenvalues&quot;)</code></pre>
+<p><img src="papilio_32_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+<pre class="r"><code>#convert to data frame for plotting
+all_pca_scores &lt;- as.data.frame(pap_el_pca$scores)
+
+#add population info
+all_pca_scores$pop &lt;- pop(pap_el_76_genlight)
+all_pca_scores$species &lt;- strata(pap_el_76_genlight)$species
+
+#pop_colors were generated with the following line
+#pop_colors &lt;- wheel(&quot;purple&quot;, num = 5)
+
+#plot PCA, colored by population, shaped by species
+pca_plot &lt;- ggplot(all_pca_scores, 
+                    aes(x=PC1, y=PC2, colour = pop, shape = species)) + 
+  geom_point(size=3) +
+  geom_hline(yintercept=0) + 
+  geom_vline(xintercept=0) + 
+  theme_minimal()  +
+  scale_color_manual(values =  pop_colors) + 
+  labs(title = &quot;PCA Analysis for H. papilio and H. elegans&quot;) + 
+  theme(
+    plot.title = element_text(face = &quot;bold&quot;, hjust = .5), 
+    legend.title = element_blank(), legend.text = element_text(size = 15)) 
+
+pca_plot</code></pre>
+<p><img src="papilio_32_files/figure-html/unnamed-chunk-7-2.png" width="672" /></p>
 
 
 
