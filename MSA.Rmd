@@ -1,0 +1,326 @@
+---
+title: "Analysis of Multiple Sequence Alignments"
+date: "1/11/2021"
+output: 
+  html_document:
+    code_folding: 'hide'
+    theme: 'cerulean'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, echo = TRUE, warning = FALSE)
+
+
+```
+
+*Based on script by Mattia Greco*\n\n
+
+
+
+\n\n\n First we'll load the needed libraries and alignment fasta file for *Hyalosphenia papilio* & *Hyalosphenia elegans*.
+
+```{r, results = 'hide'}
+
+#load needed libraries
+library(tidyverse)
+library(adegenet)
+library(ape)
+library(vegan)
+library(ggtree)
+library(poppr)
+
+##H. papilio
+#load alignment file as a genlight object
+hpap_align<-fasta2genlight('./Hpap_conc_MSA.fasta')
+#loading as DNAbin to look at genome size - 32,811
+hpap_dna_bin <- fasta2DNAbin('./Hpap_conc_MSA.fasta')
+
+##H. elegans
+#load alignment file as a genlight object
+hele_align<-fasta2genlight('./Hele_conc_MSA.fasta')
+#loading as DNAbin to look at genome size - 32,811
+hele_dna_bin <- fasta2DNAbin('./Hele_conc_MSA.fasta')
+
+```
+
+Here is some basic information about the alignments for *H. papilio* and *H. elegans*.
+
+```{r}
+
+hpap_align
+
+hele_align
+
+```
+
+Now we can use the function snpposi.plot() to visualize the distribution of polymorphisms in the alignment. It takes the arguments:  
+\n\n x: the SNP positions \     
+genome.size: integer representing genome length \    
+codon: a logical indicating if codon position should be indicated    
+
+The function position() here extracts a vector of integers representing the SNP positions from the genlight object.
+
+Including the codon information gives us more information on the SNPs, as changes at codon position 2 are more likely to result in an amino acid change. Thus, trends in SNP density for this position are particularly informative on nonsynonymous variability.   
+
+```{r}
+
+snpposi.plot(position(hpap_align), genome.size = 57921, codon = TRUE) + 
+  labs(title = ('Distribution of SNPs Across the Genome in H. papilio')) + 
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", hjust = .5, size = 18), 
+        axis.title = element_text(size = 15))
+
+snpposi.plot(position(hele_align), genome.size = 32811, codon = TRUE) + 
+  labs(title = ('Distribution of SNPs Across the Genome in H. elegans')) + 
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", hjust = .5, size = 18), 
+        axis.title = element_text(size = 15))
+
+```
+
+glPlot offers a convenient way to visualize genlight objects, enabling us to see SNPs across individuals. We can compare the observed data set to a simulated genlight object with the function glSim(). 
+
+```{r}
+
+glPlot(hpap_align, posi="topleft", main = "H. papilio SNPs Across Individuals")
+glPlot(hele_align, posi="topleft", main = "H. elegans SNPs Across Individuals")
+
+glSim(n.ind = 47, n.snp.nonstruc = 769, ploidy=1) %>% 
+  glPlot(posi = "topleft", main = "Simulated Data Set")
+
+```
+
+glPca performs Principal Components Analysis for genlight objects. 
+
+```{r}
+
+#perform PCA
+hpap_pca <- glPca(hpap_align, nf = 3)
+hele_pca <- glPca(hele_align, nf = 3)
+
+#plotting PC1 & PC2 from pca scores obtained above
+ggplot(as.data.frame(hpap_pca$scores), aes(x =PC1, y = PC2)) + 
+  geom_point(color = "darkred", alpha = .6, size = 3) +
+  labs(title = "PCA for H. papilio")  + 
+  theme(plot.title = element_text(face = "bold", hjust = .5), 
+        panel.background  = element_rect(fill = "#F1F1F1"))
+
+ggplot(as.data.frame(hele_pca$scores), aes(x =PC1, y = PC2)) + 
+  geom_point(color = "darkblue", alpha = .6, size = 3) +
+  labs(title = "PCA for H. elegans")  +
+  theme(plot.title = element_text(face = "bold", hjust = .5), panel.background  = element_rect(fill = "#F1F1F1"))
+
+
+```
+
+We can add the location information by loading a csv file and joining the data.
+
+```{r}
+
+#load population information
+pop_info <- read_csv("./population_info.csv")
+
+#select needed columns & rename
+pop_info_pap <- pop_info %>% 
+  select(`10digit code AMW`, location_of_sample) %>% 
+  rename("code" = `10digit code AMW`)
+
+pop_info_ele <- pop_info %>% 
+  select(`x10_digit_code???`, location_of_sample) %>% 
+  rename("code" = `x10_digit_code???`)
+
+#join location information with pca scores
+env <- hpap_pca$scores %>%
+  as.data.frame() %>% 
+  rownames_to_column('var') %>% 
+  mutate(var = substr(var, 1, 10)) %>% 
+  inner_join(pop_info_pap, by = c("var" = "code"))
+
+env_el <- hele_pca$scores %>%
+  as.data.frame() %>% 
+  rownames_to_column('var') %>% 
+  mutate(var = substr(var, 1, 10)) %>% 
+  left_join(pop_info_ele, by = c("var" = "code")) %>%
+  mutate(location_of_sample = ifelse(is.na(location_of_sample), 
+                                     "Unknown", 
+                                     location_of_sample))
+
+```
+
+Creating the PCA plot including location of each sample.
+
+```{r}
+
+ggplot(env, aes(x =PC1, y = PC2, color = location_of_sample)) + 
+  geom_point(alpha = .8, size = 2) + 
+  labs(title = "PCA for H. papilio MSA", color = "Location") +
+  theme_minimal() + 
+  theme(plot.title = element_text(face = "bold", hjust = .5), 
+   legend.title = element_text(face = "bold"))
+
+ggplot(env_el, aes(x =PC1, y = PC2, color = location_of_sample)) + 
+  geom_point(alpha = .8, size = 2) + 
+  labs(title = "PCA for H. elegans MSA", color = "Location") +
+  theme_minimal() + 
+  theme(plot.title = element_text(face = "bold", hjust = .5), 
+   legend.title = element_text(face = "bold"))
+
+```
+
+The function envfit fits an environmental factor onto the ordination. This means the projections of points will be maximally correlated with the corresponding environmental variable. 
+
+```{r}
+
+env_result <- envfit(hpap_pca$scores, env, permutations = 999, na.rm = TRUE)
+
+#print it to see goodness of fit results
+env_result
+
+env_result_el <- envfit(hele_pca$scores, env_el, permutations = 999, na.rm = TRUE)
+env_result_el
+
+
+```
+
+Then we can put the centroids and PCA results together.
+
+```{r}
+
+#helpful for labelling
+library(ggrepel)
+
+centroid_score <- env_result$factors$centroids %>%
+  as.data.frame() %>%  
+  rownames_to_column('var') %>% 
+  filter(substr(var, 1,3) == "loc") %>% 
+  mutate(var = substr(var, 19, nchar(var)))
+
+centroid_score_el <- env_result_el$factors$centroids %>%
+  as.data.frame() %>%  
+  rownames_to_column('var') %>% 
+  filter(substr(var, 1,3) == "loc") %>% 
+  mutate(var = substr(var, 19, nchar(var)))
+
+ggplot()+
+  geom_point(data = env, aes(x = PC1, y = PC2, fill = location_of_sample),
+             shape = 21,
+             size = 3) +
+  geom_point(data = centroid_score, 
+             aes(x = PC1,  y = PC2), 
+             shape = 23, size = 7)+
+  geom_text_repel(data = centroid_score, 
+            aes(x = PC1, y = PC2, label = var), box.padding = .8) +
+  theme_classic() + 
+  scale_fill_brewer(palette = "Set3") + 
+  labs(fill = "Sample Location", 
+       title = "Population Structure by Location in H. papilio") +
+  theme(plot.title = element_text(face = "bold", hjust = .5), 
+   legend.title = element_text(face = "bold"))
+
+ggplot()+
+  geom_point(data = env_el, aes(x = PC1, y = PC2, fill = location_of_sample),
+             shape = 21,
+             size = 3) +
+  geom_point(data = centroid_score_el, 
+             aes(x = PC1,  y = PC2), 
+             shape = 23, size = 7)+
+  geom_text_repel(data = centroid_score_el, 
+            aes(x = PC1, y = PC2, label = var), box.padding = 1.2) +
+  theme_classic() + 
+  scale_fill_brewer(palette = "Set3") + 
+  labs(fill = "Sample Location", 
+       title = "Population Structure by Location in H. elegans") +
+  theme(plot.title = element_text(face = "bold", hjust = .5), 
+   legend.title = element_text(face = "bold"))
+
+
+```
+
+We can also build trees. The nj function returns a neighbor-joining tree (phylo object).
+
+```{r}
+hpap_align$ind.names <- substr(hpap_align$ind.names, 1, 10)
+hele_align$ind.names <- substr(hele_align$ind.names, 1, 10)
+
+
+#generate neighbor-joining tree
+tree_nj <- nj(dist(as.matrix(hpap_align)))
+plot.phylo(tree_nj)
+
+tree_nj_el <- nj(dist(as.matrix(hele_align)))
+plot.phylo(tree_nj_el)
+
+#generate upgma tree
+tree_up <- aboot(hpap_align, tree = "upgma", distance = bitwise.dist, sample = 100, cutoff = 50)
+tree_up_el <- aboot(hele_align, tree = "upgma", distance = bitwise.dist, sample = 100, cutoff = 50)
+
+```
+
+Now we can add location information to the trees.
+
+```{r}
+meta <- env %>% select(var, location_of_sample) %>% 
+  rename("tip.label" = var)
+
+meta_el <- env_el %>% select(var, location_of_sample) %>% 
+  rename("tip.label" = var)
+
+hpap_tree <- ggtree(tree_up) %<+% meta 
+hele_tree <- ggtree(tree_up_el) %<+% meta_el
+
+hpap_tree +
+  geom_tippoint(aes(color = location_of_sample))+
+  geom_nodelab() +
+  theme(legend.title = element_blank(), 
+        legend.text = element_text(size = 15)) +
+  geom_tiplab(size = 1.8, aes(label = substr(label, 6, 10))) + 
+  labs(title = "Dendrogram for H. papilio")
+
+hele_tree +
+  geom_tippoint(aes(color = location_of_sample))+
+  geom_nodelab() +
+  theme(legend.title = element_blank(), 
+        legend.text = element_text(size = 15)) +
+  geom_tiplab(size = 1.8, aes(label = substr(label, 6, 10))) + 
+  labs(title = "Dendrogram for H. elegans")
+
+  
+```
+
+
+
+```{r, include = FALSE, eval =FALSE }
+
+#Generating random subsets of variants can demonstrate the level of support for the observed patterns in genetic differentiation. 
+
+library(dartR)
+library(ggplot2)
+library(poppr)
+library(phangorn)
+
+# reating a list object to save our subsets in.
+variant_subset <- vector(mode = "list", length = 30)
+
+
+#Using a for loop to generate 30 subsets of 200 random variants from the hpap genlight object
+for (i in 1:30){
+  variant_subset[[i]] <- gl.subsample.loci(hpap_align,200, method = "random")
+}
+
+# Checking we have 50 vcfR objects:
+length(Hpap.variant.subset)
+
+
+plot(tree)
+
+Hpap.trees <- upgma(bitwise.dist(Hpap_align))
+class(Hpap.trees) <- "multiPhylo"
+
+# Overlapping the trees
+densiTree(Hpap.trees, consensus = tree)
+title(xlab = "Proportion of variants different")
+
+
+
+```
+
