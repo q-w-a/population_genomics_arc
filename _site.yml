@@ -9,6 +9,8 @@ navbar:
       href: papilio_32.html
     - text: "H. Papilio, 32 Sequence Reference, DAPC"
       href: papilio_32_dapc.html
+    - text: "Multiple Sequence Alignment Analysis"
+      href: MSA.html
 
 output:
   html_document:

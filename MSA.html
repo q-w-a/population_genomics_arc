@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+
+
+<title>Analysis of Multiple Sequence Alignments</title>
+
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/cerulean.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+</style>
+
+
+<style type="text/css">
+/* padding for bootstrap navbar */
+body {
+  padding-top: 51px;
+  padding-bottom: 40px;
+}
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h1 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h2 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h3 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h4 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h5 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h6 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #ffffff;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script>
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.parent().addClass('active');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">Population Genomics in Arcellinida</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="papilio_32.html">H. Papilio, 32 Sequence Reference, Dendrogram &amp; PCA</a>
+</li>
+<li>
+  <a href="papilio_32_dapc.html">H. Papilio, 32 Sequence Reference, DAPC</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div class="fluid-row" id="header">
+
+<div class="btn-group pull-right">
+<button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">Analysis of Multiple Sequence Alignments</h1>
+<h4 class="date">1/11/2021</h4>
+
+</div>
+
+
+<p><em>Based on script by Mattia Greco</em></p>
+<p>First we’ll load the needed libraries and alignment fasta file for <em>Hyalosphenia papilio</em> &amp; <em>Hyalosphenia elegans</em>.</p>
+<pre class="r"><code>#load needed libraries
+library(tidyverse)
+library(adegenet)
+library(ape)
+library(vegan)
+library(ggtree)
+library(poppr)
+
+##H. papilio
+#load alignment file as a genlight object
+hpap_align&lt;-fasta2genlight(&#39;./Hpap_conc_MSA.fasta&#39;)
+#loading as DNAbin to look at genome size - 32,811
+hpap_dna_bin &lt;- fasta2DNAbin(&#39;./Hpap_conc_MSA.fasta&#39;)
+
+##H. elegans
+#load alignment file as a genlight object
+hele_align&lt;-fasta2genlight(&#39;./Hele_conc_MSA.fasta&#39;)
+#loading as DNAbin to look at genome size - 32,811
+hele_dna_bin &lt;- fasta2DNAbin(&#39;./Hele_conc_MSA.fasta&#39;)</code></pre>
+<p>Here is some basic information about the alignments for <em>H. papilio</em> and <em>H. elegans</em>.</p>
+<pre class="r"><code>hpap_align</code></pre>
+<pre><code>##  /// GENLIGHT OBJECT /////////
+## 
+##  // 44 genotypes,  769 binary SNPs, size: 89.7 Kb
+##  1730 (5.11 %) missing data
+## 
+##  // Basic content
+##    @gen: list of 44 SNPbin
+##    @ploidy: ploidy of each individual  (range: 1-1)
+## 
+##  // Optional content
+##    @ind.names:  44 individual labels
+##    @loc.all:  769 alleles
+##    @position: integer storing positions of the SNPs
+##    @other: a list containing: elements without names</code></pre>
+<pre class="r"><code>hele_align</code></pre>
+<pre><code>##  /// GENLIGHT OBJECT /////////
+## 
+##  // 28 genotypes,  715 binary SNPs, size: 62.6 Kb
+##  1553 (7.76 %) missing data
+## 
+##  // Basic content
+##    @gen: list of 28 SNPbin
+##    @ploidy: ploidy of each individual  (range: 1-1)
+## 
+##  // Optional content
+##    @ind.names:  28 individual labels
+##    @loc.all:  715 alleles
+##    @position: integer storing positions of the SNPs
+##    @other: a list containing: elements without names</code></pre>
+<p>Now we can use the function snpposi.plot() to visualize the distribution of polymorphisms in the alignment. It takes the arguments:<br />
+x: the SNP positions  <br />
+genome.size: integer representing genome length  <br />
+codon: a logical indicating if codon position should be indicated</p>
+<p>The function position() here extracts a vector of integers representing the SNP positions from the genlight object.</p>
+<p>Including the codon information gives us more information on the SNPs, as changes at codon position 2 are more likely to result in an amino acid change. Thus, trends in SNP density for this position are particularly informative on nonsynonymous variability.</p>
+<pre class="r"><code>snpposi.plot(position(hpap_align), genome.size = 57921, codon = TRUE) + 
+  labs(title = (&#39;Distribution of SNPs Across the Genome in H. papilio&#39;)) + 
+  theme_minimal() +
+  theme(plot.title = element_text(face = &quot;bold&quot;, hjust = .5, size = 18), 
+        axis.title = element_text(size = 15))</code></pre>
+<p><img src="MSA_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+<pre class="r"><code>snpposi.plot(position(hele_align), genome.size = 32811, codon = TRUE) + 
+  labs(title = (&#39;Distribution of SNPs Across the Genome in H. elegans&#39;)) + 
+  theme_minimal() +
+  theme(plot.title = element_text(face = &quot;bold&quot;, hjust = .5, size = 18), 
+        axis.title = element_text(size = 15))</code></pre>
+<p><img src="MSA_files/figure-html/unnamed-chunk-3-2.png" width="672" /></p>
+<p>glPlot offers a convenient way to visualize genlight objects, enabling us to see SNPs across individuals. We can compare the observed data set to a simulated genlight object with the function glSim().</p>
+<pre class="r"><code>glPlot(hpap_align, posi=&quot;topleft&quot;, main = &quot;H. papilio SNPs Across Individuals&quot;)</code></pre>
+<p><img src="MSA_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+<pre class="r"><code>glPlot(hele_align, posi=&quot;topleft&quot;, main = &quot;H. elegans SNPs Across Individuals&quot;)</code></pre>
+<p><img src="MSA_files/figure-html/unnamed-chunk-4-2.png" width="672" /></p>
+<pre class="r"><code>glSim(n.ind = 47, n.snp.nonstruc = 769, ploidy=1) %&gt;% 
+  glPlot(posi = &quot;topleft&quot;, main = &quot;Simulated Data Set&quot;)</code></pre>
+<p><img src="MSA_files/figure-html/unnamed-chunk-4-3.png" width="672" /></p>
+<p>glPca performs Principal Components Analysis for genlight objects.</p>
+<pre class="r"><code>#perform PCA
+hpap_pca &lt;- glPca(hpap_align, nf = 3)
+hele_pca &lt;- glPca(hele_align, nf = 3)
+
+#plotting PC1 &amp; PC2 from pca scores obtained above
+ggplot(as.data.frame(hpap_pca$scores), aes(x =PC1, y = PC2)) + 
+  geom_point(color = &quot;darkred&quot;, alpha = .6, size = 3) +
+  labs(title = &quot;PCA for H. papilio&quot;)  + 
+  theme(plot.title = element_text(face = &quot;bold&quot;, hjust = .5), 
+        panel.background  = element_rect(fill = &quot;#F1F1F1&quot;))</code></pre>
+<p><img src="MSA_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<pre class="r"><code>ggplot(as.data.frame(hele_pca$scores), aes(x =PC1, y = PC2)) + 
+  geom_point(color = &quot;darkblue&quot;, alpha = .6, size = 3) +
+  labs(title = &quot;PCA for H. elegans&quot;)  +
+  theme(plot.title = element_text(face = &quot;bold&quot;, hjust = .5), panel.background  = element_rect(fill = &quot;#F1F1F1&quot;))</code></pre>
+<p><img src="MSA_files/figure-html/unnamed-chunk-5-2.png" width="672" /></p>
+<p>We can add the location information by loading a csv file and joining the data.</p>
+<pre class="r"><code>#load population information
+pop_info &lt;- read_csv(&quot;./population_info.csv&quot;)
+
+#select needed columns &amp; rename
+pop_info_pap &lt;- pop_info %&gt;% 
+  select(`10digit code AMW`, location_of_sample) %&gt;% 
+  rename(&quot;code&quot; = `10digit code AMW`)
+
+pop_info_ele &lt;- pop_info %&gt;% 
+  select(`x10_digit_code???`, location_of_sample) %&gt;% 
+  rename(&quot;code&quot; = `x10_digit_code???`)
+
+#join location information with pca scores
+env &lt;- hpap_pca$scores %&gt;%
+  as.data.frame() %&gt;% 
+  rownames_to_column(&#39;var&#39;) %&gt;% 
+  mutate(var = substr(var, 1, 10)) %&gt;% 
+  inner_join(pop_info_pap, by = c(&quot;var&quot; = &quot;code&quot;))
+
+env_el &lt;- hele_pca$scores %&gt;%
+  as.data.frame() %&gt;% 
+  rownames_to_column(&#39;var&#39;) %&gt;% 
+  mutate(var = substr(var, 1, 10)) %&gt;% 
+  left_join(pop_info_ele, by = c(&quot;var&quot; = &quot;code&quot;)) %&gt;%
+  mutate(location_of_sample = ifelse(is.na(location_of_sample), 
+                                     &quot;Unknown&quot;, 
+                                     location_of_sample))</code></pre>
+<p>Creating the PCA plot including location of each sample.</p>
+<pre class="r"><code>ggplot(env, aes(x =PC1, y = PC2, color = location_of_sample)) + 
+  geom_point(alpha = .8, size = 2) + 
+  labs(title = &quot;PCA for H. papilio MSA&quot;, color = &quot;Location&quot;) +
+  theme_minimal() + 
+  theme(plot.title = element_text(face = &quot;bold&quot;, hjust = .5), 
+   legend.title = element_text(face = &quot;bold&quot;))</code></pre>
+<p><img src="MSA_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+<pre class="r"><code>ggplot(env_el, aes(x =PC1, y = PC2, color = location_of_sample)) + 
+  geom_point(alpha = .8, size = 2) + 
+  labs(title = &quot;PCA for H. elegans MSA&quot;, color = &quot;Location&quot;) +
+  theme_minimal() + 
+  theme(plot.title = element_text(face = &quot;bold&quot;, hjust = .5), 
+   legend.title = element_text(face = &quot;bold&quot;))</code></pre>
+<p><img src="MSA_files/figure-html/unnamed-chunk-7-2.png" width="672" /></p>
+<p>The function envfit fits an environmental factor onto the ordination. This means the projections of points will be maximally correlated with the corresponding environmental variable.</p>
+<pre class="r"><code>env_result &lt;- envfit(hpap_pca$scores, env, permutations = 999, na.rm = TRUE)
+
+#print it to see goodness of fit results
+env_result</code></pre>
+<pre><code>## 
+## ***VECTORS
+## 
+##          PC1      PC2 r2 Pr(&gt;r)    
+## PC1  1.00000  0.00000  1  0.001 ***
+## PC2  0.00000  1.00000  1  0.001 ***
+## PC3  0.03739 -0.04698  0  1.000    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## Permutation: free
+## Number of permutations: 999
+## 
+## ***FACTORS:
+## 
+## Centroids:
+##                                              PC1     PC2
+## varAm_tu_Hp03                            -6.8416  0.5209
+## varAm_tu_Hp04                            -7.5766  0.4393
+## varAm_tu_Hp05                            -7.5975  0.5719
+## varAm_tu_Hp06                            -7.5411  0.4694
+## varAm_tu_Hp07                            -7.1544  0.4207
+## varAm_tu_Hp08                             6.1735  4.7200
+## varAm_tu_Hp09                             4.6576 -6.4703
+## varAm_tu_Hp10                             5.9732  4.4855
+## varAm_tu_Hp11                             4.1784 -5.8520
+## varAm_tu_Hp12                             6.0679  4.8217
+## varAm_tu_Hp13                             6.0496  4.9571
+## varAm_tu_Hp15                            -7.4031  0.5781
+## varAm_tu_Hp16                             6.2125  4.9930
+## varAm_tu_Hp17                            -7.2503  0.6138
+## varAm_tu_Hp18                             0.4338 -1.8355
+## varAm_tu_Hp19                            -7.4056  0.4665
+## varAm_tu_Hp20                             3.9090 -4.6911
+## varAm_tu_Hp21                             6.0122  4.2144
+## varAm_tu_Hp22                             5.9829  4.9217
+## varAm_tu_Hp23                            -7.3409  0.4780
+## varAm_tu_Hp24                            -7.3806  0.5363
+## varAm_tu_Hp25                             5.4186  4.2709
+## varAm_tu_Hp26                             3.8771 -4.6778
+## varAm_tu_Hp27                             4.6629 -6.5495
+## varAm_tu_Hp28                            -7.5204  0.6131
+## varAm_tu_Hp29                             6.0264  4.9907
+## varAm_tu_Hp30                            -6.5662  0.3721
+## varAm_tu_Hp31                            -7.1842  0.6671
+## varAm_tu_Hp32                             4.2638 -5.9871
+## varAm_tu_Hp33                            -6.9265  0.7097
+## varAm_tu_Hp34                            -6.6550  0.4573
+## varAm_tu_Hp35                             4.5089 -6.4651
+## varAm_tu_Hp36                             4.7870 -6.7157
+## varAm_tu_Hp37                            -6.3932  0.5941
+## varAm_tu_Hp38                             4.8372 -6.3754
+## varAm_tu_Hp39                             5.7956  3.9862
+## varAm_tu_Hp40                            -6.4860  0.5326
+## varAm_tu_Hp41                             6.3401  4.9197
+## varAm_tu_Hp42                             6.1604  5.1152
+## varAm_tu_Hp43                             6.1098  4.5328
+## varAm_tu_Hp44                            -7.0647  0.3232
+## varAm_tu_Hp45                             4.9130 -6.6647
+## varAm_tu_Hp46                             4.3756 -6.1923
+## varAm_tu_Hp47                             0.5608 -1.8165
+## location_of_sampleAcadia National Park    2.6413 -2.7709
+## location_of_sampleGreat Cranberry Island  4.6576 -6.4703
+## location_of_sampleHarvard Forest          5.9369  4.5571
+## location_of_sampleHawley bog             -5.7973  0.6547
+## location_of_sampleOrono bog               0.5698  2.3565
+## 
+## Goodness of fit:
+##                        r2 Pr(&gt;r)    
+## var                1.0000  1.000    
+## location_of_sample 0.4754  0.001 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## Permutation: free
+## Number of permutations: 999</code></pre>
+<pre class="r"><code>env_result_el &lt;- envfit(hele_pca$scores, env_el, permutations = 999, na.rm = TRUE)
+env_result_el</code></pre>
+<pre><code>## 
+## ***VECTORS
+## 
+##          PC1      PC2 r2 Pr(&gt;r)    
+## PC1  1.00000  0.00000  1  0.001 ***
+## PC2  0.00000  1.00000  1  0.001 ***
+## PC3  0.11017 -0.07723  0  1.000    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## Permutation: free
+## Number of permutations: 999
+## 
+## ***FACTORS:
+## 
+## Centroids:
+##                                            PC1     PC2
+## varAm_tu_Hy03                          -2.2393 -0.6331
+## varAm_tu_Hy06                          -2.1788 -0.4045
+## varAm_tu_Hy10                          -2.5349 -0.5752
+## varAm_tu_Hy11                          -2.4407 -0.5201
+## varAm_tu_Hy12                          -2.0377 -0.3968
+## varAm_tu_Hy13                          -2.1783 -0.4810
+## varAm_tu_Hy14                          -2.4382 -0.6240
+## varAm_tu_Hy15                          11.8849 -2.2263
+## varAm_tu_Hy16                          -2.0507 -0.4889
+## varAm_tu_Hy17                          -2.5125 -0.5683
+## varAm_tu_Hy18                          -2.2832 -0.4235
+## varAm_tu_Hy19                          -2.1188 -0.4000
+## varAm_tu_Hy20                          15.1081 -6.0593
+## varAm_tu_Hy22                          -2.4086 -0.4700
+## varAm_tu_Hy24                          -2.1328 -0.3651
+## varAm_tu_Hy25                          -2.2245 -0.3610
+## varAm_tu_Hy26                          -2.1546 -0.4595
+## varAm_tu_Hy27                          -1.9886 -0.4077
+## varAm_tu_Hy28                           6.2364 12.1452
+## varAm_tu_Hy31                          -2.0572 -0.3736
+## varAm_tu_Hy35                           6.5766 12.5037
+## varAm_tu_Hy36                          -2.5388 -0.6118
+## varAm_tu_Hy37                          12.9633 -5.0974
+## varAm_tu_Hy39                          -2.4001 -0.4253
+## varAm_tu_Hy40                          -2.5204 -0.5279
+## varAm_tu_Hy42                          -2.4806 -0.5482
+## varAm_tu_Hy4c                          -2.4236 -0.5355
+## varAm_tu_Hy8c                          -2.4264 -0.6648
+## location_of_sampleAcadia National Park  0.5940  3.7951
+## location_of_sampleHarvard Forest       -2.0716 -0.4336
+## location_of_sampleHawley bog           -2.1717 -0.3805
+## location_of_sampleOrono bog             1.4185 -1.6352
+## location_of_sampleUnknown              -0.0537 -1.0430
+## 
+## Goodness of fit:
+##                        r2 Pr(&gt;r)
+## var                1.0000  1.000
+## location_of_sample 0.1262  0.556
+## Permutation: free
+## Number of permutations: 999</code></pre>
+<p>Then we can put the centroids and PCA results together.</p>
+<pre class="r"><code>#helpful for labelling
+library(ggrepel)
+
+centroid_score &lt;- env_result$factors$centroids %&gt;%
+  as.data.frame() %&gt;%  
+  rownames_to_column(&#39;var&#39;) %&gt;% 
+  filter(substr(var, 1,3) == &quot;loc&quot;) %&gt;% 
+  mutate(var = substr(var, 19, nchar(var)))
+
+centroid_score_el &lt;- env_result_el$factors$centroids %&gt;%
+  as.data.frame() %&gt;%  
+  rownames_to_column(&#39;var&#39;) %&gt;% 
+  filter(substr(var, 1,3) == &quot;loc&quot;) %&gt;% 
+  mutate(var = substr(var, 19, nchar(var)))
+
+ggplot()+
+  geom_point(data = env, aes(x = PC1, y = PC2, fill = location_of_sample),
+             shape = 21,
+             size = 3) +
+  geom_point(data = centroid_score, 
+             aes(x = PC1,  y = PC2), 
+             shape = 23, size = 7)+
+  geom_text_repel(data = centroid_score, 
+            aes(x = PC1, y = PC2, label = var), box.padding = .8) +
+  theme_classic() + 
+  scale_fill_brewer(palette = &quot;Set3&quot;) + 
+  labs(fill = &quot;Sample Location&quot;, 
+       title = &quot;Population Structure by Location in H. papilio&quot;) +
+  theme(plot.title = element_text(face = &quot;bold&quot;, hjust = .5), 
+   legend.title = element_text(face = &quot;bold&quot;))</code></pre>
+<p><img src="MSA_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<pre class="r"><code>ggplot()+
+  geom_point(data = env_el, aes(x = PC1, y = PC2, fill = location_of_sample),
+             shape = 21,
+             size = 3) +
+  geom_point(data = centroid_score_el, 
+             aes(x = PC1,  y = PC2), 
+             shape = 23, size = 7)+
+  geom_text_repel(data = centroid_score_el, 
+            aes(x = PC1, y = PC2, label = var), box.padding = 1.2) +
+  theme_classic() + 
+  scale_fill_brewer(palette = &quot;Set3&quot;) + 
+  labs(fill = &quot;Sample Location&quot;, 
+       title = &quot;Population Structure by Location in H. elegans&quot;) +
+  theme(plot.title = element_text(face = &quot;bold&quot;, hjust = .5), 
+   legend.title = element_text(face = &quot;bold&quot;))</code></pre>
+<p><img src="MSA_files/figure-html/unnamed-chunk-9-2.png" width="672" /></p>
+<p>We can also build trees. The nj function returns a neighbor-joining tree (phylo object).</p>
+<pre class="r"><code>hpap_align$ind.names &lt;- substr(hpap_align$ind.names, 1, 10)
+hele_align$ind.names &lt;- substr(hele_align$ind.names, 1, 10)
+
+
+#generate neighbor-joining tree
+tree_nj &lt;- nj(dist(as.matrix(hpap_align)))
+plot.phylo(tree_nj)</code></pre>
+<p><img src="MSA_files/figure-html/unnamed-chunk-10-1.png" width="672" /></p>
+<pre class="r"><code>tree_nj_el &lt;- nj(dist(as.matrix(hele_align)))
+plot.phylo(tree_nj_el)</code></pre>
+<p><img src="MSA_files/figure-html/unnamed-chunk-10-2.png" width="672" /></p>
+<pre class="r"><code>#generate upgma tree
+tree_up &lt;- aboot(hpap_align, tree = &quot;upgma&quot;, distance = bitwise.dist, sample = 100, cutoff = 50)</code></pre>
+<pre><code>## 
+Running bootstraps:       100 / 100
+## Calculating bootstrap values... done.</code></pre>
+<p><img src="MSA_files/figure-html/unnamed-chunk-10-3.png" width="672" /></p>
+<pre class="r"><code>tree_up_el &lt;- aboot(hele_align, tree = &quot;upgma&quot;, distance = bitwise.dist, sample = 100, cutoff = 50)</code></pre>
+<pre><code>## 
+Running bootstraps:       100 / 100
+## Calculating bootstrap values... done.</code></pre>
+<p><img src="MSA_files/figure-html/unnamed-chunk-10-4.png" width="672" /></p>
+<p>Now we can add location information to the trees.</p>
+<pre class="r"><code>meta &lt;- env %&gt;% select(var, location_of_sample) %&gt;% 
+  rename(&quot;tip.label&quot; = var)
+
+meta_el &lt;- env_el %&gt;% select(var, location_of_sample) %&gt;% 
+  rename(&quot;tip.label&quot; = var)
+
+hpap_tree &lt;- ggtree(tree_up) %&lt;+% meta 
+hele_tree &lt;- ggtree(tree_up_el) %&lt;+% meta_el
+
+hpap_tree +
+  geom_tippoint(aes(color = location_of_sample))+
+  geom_nodelab() +
+  theme(legend.title = element_blank(), 
+        legend.text = element_text(size = 15)) +
+  geom_tiplab(size = 1.8, aes(label = substr(label, 6, 10))) + 
+  labs(title = &quot;Dendrogram for H. papilio&quot;)</code></pre>
+<p><img src="MSA_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+<pre class="r"><code>hele_tree +
+  geom_tippoint(aes(color = location_of_sample))+
+  geom_nodelab() +
+  theme(legend.title = element_blank(), 
+        legend.text = element_text(size = 15)) +
+  geom_tiplab(size = 1.8, aes(label = substr(label, 6, 10))) + 
+  labs(title = &quot;Dendrogram for H. elegans&quot;)</code></pre>
+<p><img src="MSA_files/figure-html/unnamed-chunk-11-2.png" width="672" /></p>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
